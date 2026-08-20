@@ -6,14 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MetricQueryRequest;
 use App\Http\Resources\PokemonResource;
 use App\Models\Pokemon;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
 class PokemonMetricsController extends Controller
 {
     private const CACHE_TTL_SECONDS = 300;
 
-    public function __invoke(MetricQueryRequest $request): AnonymousResourceCollection
+    public function __invoke(MetricQueryRequest $request): JsonResponse
     {
         $metric = $request->metric();
         $order = $request->order();
@@ -27,16 +27,19 @@ class PokemonMetricsController extends Controller
             md5((string) json_encode([$metric, $order, $perPage, $fields, $page])),
         );
 
-        $paginator = Cache::remember(
+        $payload = Cache::remember(
             $cacheKey,
             self::CACHE_TTL_SECONDS,
-            fn () => Pokemon::query()
-                ->select($fields)
-                ->orderBy($metric, $order)
-                ->orderBy('external_id')
-                ->paginate($perPage),
+            fn () => PokemonResource::collection(
+                Pokemon::query()
+                    ->select($fields)
+                    ->orderBy($metric, $order)
+                    ->orderBy('external_id')
+                    ->paginate($perPage)
+                    ->appends($request->query()),
+            )->response()->getData(true),
         );
 
-        return PokemonResource::collection($paginator);
+        return response()->json($payload);
     }
 }
