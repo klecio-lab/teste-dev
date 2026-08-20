@@ -1,4 +1,4 @@
-FROM php:8.3-cli
+FROM php:8.4-cli
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -10,10 +10,11 @@ RUN apt-get update \
         libssl-dev \
         libcurl4-openssl-dev \
     && docker-php-ext-install pdo_mysql bcmath pcntl intl zip opcache \
-    && pecl install swoole redis \
+    && pecl install swoole \
+    && pecl install redis \
     && docker-php-ext-enable swoole redis \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /tmp/pear
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
