@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: pokestats-app
+    container_name: pokestats-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/var/www/html
+      - composer_cache:/root/.cache/composer
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - pokestats
+
+  mysql:
+    image: mysql:8.0
+    container_name: pokestats-mysql
+    environment:
+      MYSQL_DATABASE: pokestats
+      MYSQL_USER: pokestats
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - pokestats
+
+  redis:
+    image: redis:7-alpine
+    container_name: pokestats-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pokestats
+
+volumes:
+  mysql_data:
+  composer_cache:
+
+networks:
+  pokestats:
+    driver: bridge
